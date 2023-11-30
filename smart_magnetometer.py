@@ -4,11 +4,13 @@ import matplotlib.pyplot as plt
 import multiprocessing as mp
 from utils import TLS
 
+# for later reference: https://noisyopt.readthedocs.io/en/latest/
+
 omega_0 = 2
-omega = 2.4
+omega = 2.01
 
 def parallel_simulation(beta):
-    times = np.linspace(-12,12,200)
+    times = np.linspace(-10,10,60)
     system = TLS('sech', beta=beta, delta=omega_0 - omega, t_points=times)
     system.evolve()
     fidelity = system.final_fidelity
@@ -16,12 +18,17 @@ def parallel_simulation(beta):
     del system
     return fidelity
     
-# A smarter way to sample beta values would be to
-# sample more densely around the maximum fidelity
-# and less densely elsewhere.
+# use scipy built in optimizer to find beta that maximizes fidelity:
+from scipy.optimize import minimize_scalar
+min_beta = -2
+max_beta = 2
+num_beta_steps = 200
+minimize_result = minimize_scalar(lambda beta: parallel_simulation(beta),  
+                                  method='brent', 
+                                  tol=1e-3, 
+                                  bracket=(min_beta, max_beta),
+                                  options={'maxiter': 20,}
+                                    
+                                )
 
-def smart_beta_sampling(fidelity_list, betas, beta_err):
-    # given the known fidelity list and the betas,
-    # guess the location of the maximum fidelity:
-
-    max_beta = betas[np.argmax(fidelity_list)]
+print(minimize_result)
