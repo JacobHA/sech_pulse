@@ -5,8 +5,8 @@ from utils import TLS
 n_points = 1000
 t_points = np.linspace(-10, 10, n_points)
 
-beta = 2*np.pi
-sys = TLS('sech', beta=beta, delta=0, phi=3*np.pi, t_points=t_points)
+beta = 1.4*np.pi
+sys = TLS('sech', beta=beta, delta=-beta/2, phi=3*np.pi, t_points=t_points)
 print(sys.alpha/np.pi)
 sys.evolve(noisy=True)
 sys.plot()
