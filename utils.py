@@ -37,7 +37,7 @@ def square_detuning(t, beta, delta, tau=1):
     elif t > (np.pi*tau)/2:
         return 0
     else:
-        return -((beta+2*delta)*tau*(np.arctan(np.sin(-np.pi/2)- np.arctan(np.sin(t/tau))))) + beta*tau*np.log(np.cos(-np.pi/2)*sech(t/tau))
+        return -((beta+2*delta)*tau*(np.arctan(np.sin(-np.pi/2) - np.arctan(np.sin(t/tau))))) + beta*tau*np.log(np.cos(-np.pi/2)*sech(t/tau))
 
 class TLS:
     def __init__(self, pulse_shape, psi_0=None, t_points=None, ham=None, alpha=None, beta=None, delta=0, phi=np.pi, tau=1):
@@ -72,12 +72,22 @@ class TLS:
 
 
     def evolve(self,):
+        # qt.smesolve
         result = qt.mesolve(H=self.ham,
                             rho0=self.psi_0,
                             tlist=self.t_points,
                             c_ops=[],
                             e_ops=[qt.sigmax(), qt.sigmay(), qt.sigmaz()],
                             options=qt.Options(store_states=True))
+        # use smesolve to get the states and expectation values:
+        # convert self.ham to qobj:
+        # qham = qt.Qobj(self.ham, dims=[[2], [2]])#, input_dims=[[2], [2]])
+        # result = qt.smesolve(H=qham,
+        #                     times=self.t_points,
+        #                     rho0=self.psi_0,
+        #                     c_ops=[],
+        #                     e_ops=[qt.sigmax(), qt.sigmay(), qt.sigmaz()],
+        #                     options=qt.Options(store_states=True))
         self.states = result.states
         self.expect = result.expect
         self.final_fidelity = qt.fidelity(result.states[-1], psi_1)
@@ -99,13 +109,13 @@ class TLS:
         ax1.set_title('Sech Pulse Effect')
         # put some vspace between the two plots
         plt.subplots_adjust(hspace=0.5)
-        
+
 
         ax2.plot(self.t_points, [self.amplitude(t_point) for t_point in self.t_points])
         ax2.set_xlabel('Time')
         ax2.set_ylabel('Pulse amplitude')
         ax2.set_title('Pulse amplitude')
-        plt.savefig(f'{self.pulse_name}-{title}.png')
+        plt.savefig(f'figures/{self.pulse_name}-{title}.png')
         return
     
     def plot_bloch(self, title='bloch-path'):
@@ -120,4 +130,4 @@ class TLS:
         b.add_points([self.expect[0], self.expect[1], self.expect[2]], meth='l')
 
         fig.tight_layout()
-        b.save(f'{self.pulse_name}-bloch.png')
+        b.save(f'figures/{self.pulse_name}-bloch.png')
