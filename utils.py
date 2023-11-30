@@ -90,7 +90,7 @@ class TLS:
         #                     options=qt.Options(store_states=True))
         self.states = result.states
         self.expect = result.expect
-        self.final_fidelity = qt.fidelity(result.states[-1], psi_1)
+        self.final_fidelity = qt.fidelity(result.states[-1], psi_0)
         self.evolved = True
 
         return 
