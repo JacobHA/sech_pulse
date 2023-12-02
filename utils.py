@@ -10,7 +10,7 @@ omega_0 = 2*np.pi
 omega = 2.*np.pi
 
 
-def sech(t):
+def sech(t): 
     return 1/np.cosh(t)
 
 def sech_amplitude(t, alpha, tau=1):
@@ -66,6 +66,10 @@ class TLS:
         
 
     def ham(self,t,args):#Hioe rotating frame
+        if self.amplitude(t) == 0:
+            if self.detuning(t) == 0:
+                # rather than return a zero matrix, return the identity
+                return qt.qeye(2)
         return 1/2*self.amplitude(t) * \
                 (np.exp(-1j*self.detuning(t))*raising + \
                  np.exp(1j*self.detuning(t))*lowering)

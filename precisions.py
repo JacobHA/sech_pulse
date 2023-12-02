@@ -46,6 +46,8 @@ if __name__ == '__main__':
             log_fid = np.log(fidelity_list)
             second_deriv = np.gradient(np.gradient(log_fid))
             precision = np.max(second_deriv)
+            fid_derivative = np.gradient(fidelity_list, 1)
+            precision = (max(np.diff(fid_derivative)))
 
         # make alpha go from 0 to 1 to 0, peaking at midpoint of deltas:
         alpha = 1 - np.abs(delta) / (deltas[-1] - deltas[0])
