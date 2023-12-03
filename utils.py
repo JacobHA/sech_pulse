@@ -2,10 +2,33 @@ from matplotlib import pyplot as plt
 import numpy as np
 import qutip as qt
 
-raising = qt.Qobj(np.array([[0, 1], [0, 0]]))
-lowering = qt.Qobj(np.array([[0, 0], [1, 0]]))
-psi_0 = qt.basis(2, 0)
-psi_1 = qt.basis(2, 1)
+# want to drive both transitions:
+slot_02 = qt.Qobj(np.array([[0, 0, 1], 
+                            [0, 0, 0], 
+                            [0, 0, 0]]))
+
+slot_20 = qt.Qobj(np.array([[0, 0, 0], 
+                            [0, 0, 0], 
+                            [1, 0, 0]]))
+
+slot_12 = qt.Qobj(np.array([[0, 0, 0], 
+                            [0, 0, 1], 
+                            [0, 0, 0]]))
+
+slot_21 = qt.Qobj(np.array([[0, 0, 0], 
+                            [0, 0, 0], 
+                            [0, 1, 0]]))
+
+slot_11 = qt.Qobj(np.array([[0, 0, 0],
+                            [0, 1, 0],
+                            [0, 0, 0]]))
+
+slot_22 = qt.Qobj(np.array([[0, 0, 0],
+                            [0, 0, 0],
+                            [0, 0, 1]]))
+
+psi_0 = qt.basis(3, 0)
+psi_1 = qt.basis(3, 1)
 omega_0 = 2*np.pi
 omega = 2.*np.pi
 
@@ -39,10 +62,10 @@ def square_detuning(t, beta, delta, tau=1):
     else:
         return -((beta+2*delta)*tau*(np.arctan(np.sin(-np.pi/2) - np.arctan(np.sin(t/tau))))) + beta*tau*np.log(np.cos(-np.pi/2)*sech(t/tau))
 
-class TLS:
+class LTS:
     def __init__(self, pulse_shape, psi_0=None, t_points=None, ham=None, alpha=None, beta=None, delta=0, phi=np.pi, tau=1):
         self.pulse_name = pulse_shape
-        self.psi_0 = psi_0 if psi_0 is not None else qt.basis(2, 0)
+        self.psi_0 = psi_0 if psi_0 is not None else qt.basis(3, 0)
         self.t_points = t_points if t_points is not None else np.linspace(-10, 10, 100)
         self.t0 = self.t_points[0]
         self.delta = delta
@@ -66,14 +89,18 @@ class TLS:
         
 
     def ham(self,t,args):#Hioe rotating frame
-        if self.amplitude(t) == 0:
-            if self.detuning(t) == 0:
-                # rather than return a zero matrix, return the identity
-                return qt.qeye(2)
+        Delta=0.
         return 1/2*self.amplitude(t) * \
-                (np.exp(-1j*self.detuning(t))*raising + \
-                 np.exp(1j*self.detuning(t))*lowering)
+                (np.exp(-1j*self.detuning(t))*slot_02 + \
+                 np.exp(1j*self.detuning(t))*slot_20 )#+ \
+                
+                # np.exp(-1j*self.detuning(t))*slot_12 + \
+                # np.exp(1j*self.detuning(t))*slot_21
+                # ) + \
+                # -2*Delta * slot_22
 
+                # 2*(deltaw - w1) * slot_11 + \ # set to zero (\delta=0)
+    
 
     def evolve(self,):
         # qt.smesolve
@@ -81,7 +108,7 @@ class TLS:
                             rho0=self.psi_0,
                             tlist=self.t_points,
                             c_ops=[],
-                            e_ops=[qt.sigmax(), qt.sigmay(), qt.sigmaz()],
+                            # e_ops=[qt.sigmax(), qt.sigmay(), qt.sigmaz()],
                             options=qt.Options(store_states=True))
         # use smesolve to get the states and expectation values:
         # convert self.ham to qobj:
@@ -99,7 +126,22 @@ class TLS:
 
         return 
     
-    def plot(self,title='dynamics'):
+    def plot_fidelity(self, title='fidelity'):
+        assert self.evolved, "System not yet evolved. Nothing to plot."
+        plt.figure()
+
+        states = [qt.Qobj(state[:-1]) for state in self.states]
+        # renormalize states:
+        states = [state.unit() for state in states]
+        psi0 = qt.basis(2, 0)
+        plt.plot(self.t_points, [qt.fidelity(state, psi0) for state in states])
+        plt.xlabel('Time')
+        plt.ylabel('Fidelity')
+        plt.title('Fidelity vs time')
+        plt.savefig(f'figures/{self.pulse_name}-{title}.png')
+        return
+
+    def plot_dyn(self,title='dynamics'):
         assert self.evolved, "System not yet evolved. Nothing to plot."
         # two subplots, one with expects, one with pulse
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
@@ -131,7 +173,36 @@ class TLS:
         ax.axis('square') # to get a nice circular plot
         ax.set_title('Bloch Sphere')
         b = qt.Bloch(fig=fig, axes=ax)
-        b.add_points([self.expect[0], self.expect[1], self.expect[2]], meth='l')
+
+        states = [qt.Qobj(state[:-1]) for state in self.states]
+        # renormalize states:
+        states = [state.unit() for state in states]
+        psi0 = qt.basis(2, 0)
+        # take the expectations of sigmax, sigmay, sigmaz on states:
+        expects = [[qt.expect(qt.sigmax(), state), qt.expect(qt.sigmay(), state), qt.expect(qt.sigmaz(), state)] for state in states]
+        expects = np.array(expects)
+        b.add_points([expects[:,0], expects[:,1], expects[:,2]], meth='l')
 
         fig.tight_layout()
         b.save(f'figures/{self.pulse_name}-bloch.png')
+
+
+    def plot(self, title='expects'):
+        assert self.evolved, "System not yet evolved. Nothing to plot."
+        plt.figure()
+
+        states = [qt.Qobj(state[:-1]) for state in self.states]
+        # renormalize states:
+        states = [state.unit() for state in states]
+        psi0 = qt.basis(2, 0)
+        # take the expectations of sigmax, sigmay, sigmaz on states:
+        expects = [[qt.expect(qt.sigmax(), state), qt.expect(qt.sigmay(), state), qt.expect(qt.sigmaz(), state)] for state in states]
+        expects = np.array(expects)
+        plt.plot(self.t_points, expects[:,0], label=r'$\langle \sigma_x \rangle$')
+        plt.plot(self.t_points, expects[:,1], label=r'$\langle \sigma_y \rangle$')
+        plt.plot(self.t_points, expects[:,2], label=r'$\langle \sigma_z \rangle$')
+        plt.xlabel('Time')
+        plt.ylabel('Expectation values')
+        plt.title('Expectation values vs time')
+        plt.legend()
+        plt.savefig(f'figures/{self.pulse_name}-{title}.png')
