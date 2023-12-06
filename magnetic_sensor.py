@@ -12,8 +12,8 @@ def power_law(x, a, b, c):
     return a * (x - delta)**b + c
 
 def parallel_simulation(beta):
-    times = np.linspace(-20,20,300)
-    system = TLS('sech', beta=beta, delta=omega_0 - omega, t_points=times)
+    times = np.linspace(-20,20,2000)
+    system = TLS('sech', phi=3*np.pi, beta=beta, delta=omega_0 - omega, t_points=times)
     system.evolve()
     fidelity = system.final_fidelity
     # delete system to free memory
@@ -22,9 +22,9 @@ def parallel_simulation(beta):
     
 
 if __name__ == '__main__':
-    min_beta = -4
-    max_beta = 6
-    num_beta_steps = 700
+    min_beta = -1
+    max_beta = 1
+    num_beta_steps = 300
     betas = np.linspace(min_beta, max_beta, num_beta_steps)
     beta_err = np.abs(betas[1] - betas[0])
 
@@ -54,30 +54,37 @@ if __name__ == '__main__':
     
     # # plt.figure()
     # # One plot with two yaxes:
-    fig, ax1 = plt.subplots()
 
-    max_beta = betas[np.argmax(fidelity_array)]
-    
-    ax1.plot(betas/2, fidelity_array, 'k', label=f'Fidelity, max at beta={round(max_beta,3)/(2)}+/-{round(beta_err,3)/(2)}')
-    # # plot the fit:
-    # ax1.plot(left_betas/2, power_law(-left_betas/2, *left_popt), 'r--', label=f'Power law fit, exponent={round(left_popt[1],3)}')
-    # ax1.plot(right_betas/2, power_law(right_betas/2, *right_popt), 'r--', label=f'Power law fit, exponent={round(right_popt[1],3)}')
-    # # Also plot second derivative of log fidelity:
+    fig, ax1 = plt.subplots()
+    # Draw a vertical line at the true magnetic field:
+    ax1.axvline(x=-(omega_0 - omega), color='r', linestyle='--', label=rf'True Magnetic Field: $-2\delta={-round(omega_0 - omega, 2)}$')
+
+    max_beta = betas[np.argmin(fidelity_array)]
+
+    ax1.plot(betas/2, fidelity_array, 'k', label=rf'Fidelity: Min. at $\beta={round(max_beta,3)/(2)}\pm{round(beta_err,3)/(2)}$')
+
     log_fid = np.log(fidelity_array)
     fid_derivative = np.gradient(fidelity_array, 1)
     print(max(np.diff(fid_derivative)))
-    print(f'Occured at beta={betas[np.argmax(np.diff(fid_derivative))]/2}')
+    print(rf'Occured at\n $\beta={betas[np.argmax(np.diff(fid_derivative))]/2}$')
     fid_susc = -np.gradient(log_fid, 2)
-    max_beta = betas[np.argmax(fid_susc)]
-    # new yaxis:
-    ax2 = ax1.twinx()
-    ax2.plot(betas/2, fid_susc, 'b', label=f'Fidelity susc.\n max at beta={round(max_beta,3)/(2)}')
+    # Average across the PT
+    fid_susc_beta = (betas[np.argmax(fid_susc)] + betas[np.argmin(fid_susc)])/2
 
-    # aggregate the two legends:
+    ax2 = ax1.twinx()
+    ax2.plot(betas/2, fid_susc, 'b', label=rf'Fidelity Susceptibility: P.T. at $\beta={round(max_beta,3)/(2)}$')
+
+    # Combine handles and labels from both axes
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, loc='best')
-    ax1.set_xlabel('beta')
+
+    # Create a single legend with multiline labels
+    legend = ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper center', bbox_to_anchor=(0.5, -0.2), fancybox=True, shadow=True, ncol=1)
+
+    # Adjust layout
+    fig.subplots_adjust(bottom=0.4)
+
+    ax1.set_ylabel('Fidelity With Initial State')
+    ax1.set_xlabel(r'Chirp Magnitude, $\beta$')
     plt.title('Fidelity vs. Detuning')
-    plt.savefig('figures/magnetic_sensor.png')
-    plt.show()
+    plt.savefig(f'figures/magnetic_sensor.png')

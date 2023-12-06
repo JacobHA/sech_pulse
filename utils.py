@@ -9,7 +9,6 @@ psi_1 = qt.basis(2, 1)
 omega_0 = 2*np.pi
 omega = 2.*np.pi
 
-
 def sech(t): 
     return 1/np.cosh(t)
 
@@ -40,7 +39,16 @@ def square_detuning(t, beta, delta, tau=1):
         return -((beta+2*delta)*tau*(np.arctan(np.sin(-np.pi/2) - np.arctan(np.sin(t/tau))))) + beta*tau*np.log(np.cos(-np.pi/2)*sech(t/tau))
 
 class TLS:
-    def __init__(self, pulse_shape, psi_0=None, t_points=None, ham=None, alpha=None, beta=None, delta=0, phi=np.pi, tau=1):
+    def __init__(self, 
+                 pulse_shape, 
+                 psi_0=None, 
+                 t_points=None, 
+                 ham=None, 
+                 alpha=None, 
+                 beta=None, 
+                 delta=0, 
+                 phi=np.pi, 
+                 tau=1):
         self.pulse_name = pulse_shape
         self.psi_0 = psi_0 if psi_0 is not None else qt.basis(2, 0)
         self.t_points = t_points if t_points is not None else np.linspace(-10, 10, 100)
@@ -61,40 +69,35 @@ class TLS:
         elif pulse_shape == 'sech':
             self.amplitude = lambda t: sech_amplitude(t, self.alpha, tau=self.tau)
             self.detuning = lambda t: sech_detuning(t, self.beta, delta=self.delta, tau=self.tau, t0=self.t0)
+        elif pulse_shape == 'rabi':
+            self.amplitude = lambda t: 1
+            self.detuning = lambda t: (self.beta - self.delta)*t
         else:
             raise ValueError('pulse_shape must be "square" or "sech"')
-        
-
-    def ham(self,t,args):#Hioe rotating frame
-        if self.amplitude(t) == 0:
-            if self.detuning(t) == 0:
-                # rather than return a zero matrix, return the identity
-                return qt.qeye(2)
-        return 1/2*self.amplitude(t) * \
-                (np.exp(-1j*self.detuning(t))*raising + \
-                 np.exp(1j*self.detuning(t))*lowering)
-
-
+    
     def evolve(self,):
-        # qt.smesolve
-        result = qt.mesolve(H=self.ham,
+        def term1(t, args):
+            return 1/2*self.amplitude(t) * np.exp(-1j*self.detuning(t))
+        
+        def term2(t, args):
+            return 1/2*self.amplitude(t) * np.exp(1j*self.detuning(t))
+        gamma = 0.01
+        N = 2
+
+        result = qt.smesolve(H=[[raising, term1], [lowering, term2]],
                             rho0=self.psi_0,
-                            tlist=self.t_points,
-                            c_ops=[],
+                            times=self.t_points,
+                            # c_ops = [np.sqrt(gamma) * qt.destroy(N),  # Dissipative decay operator
+                            #          np.sqrt(gamma) * qt.destroy(N)],  # Dissipative decay operator
+                            # sc_ops=[0.01*qt.sigmaz()],
+                            ntraj=1,
                             e_ops=[qt.sigmax(), qt.sigmay(), qt.sigmaz()],
+                            # method='homodyne',
                             options=qt.Options(store_states=True))
-        # use smesolve to get the states and expectation values:
-        # convert self.ham to qobj:
-        # qham = qt.Qobj(self.ham, dims=[[2], [2]])#, input_dims=[[2], [2]])
-        # result = qt.smesolve(H=qham,
-        #                     times=self.t_points,
-        #                     rho0=self.psi_0,
-        #                     c_ops=[],
-        #                     e_ops=[qt.sigmax(), qt.sigmay(), qt.sigmaz()],
-        #                     options=qt.Options(store_states=True))
+    
         self.states = result.states
         self.expect = result.expect
-        self.final_fidelity = qt.fidelity(result.states[-1], psi_0)
+        self.final_fidelity = qt.fidelity(result.states[0][-1], psi_0)
         self.evolved = True
 
         return 
