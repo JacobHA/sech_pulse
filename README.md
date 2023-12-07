@@ -10,10 +10,18 @@ Here is an animation for the beta=0 pulse:
 
 ![beta=0](bloch.gif)
 
+We measure fidelity from initial state (ground state) to find 
+where the system is fully excited. This would correspond to a value of $\beta$ matching the detuning:
+$\beta=-2\Delta$.
+
 Here is the fidelity as a function of beta (magnetometer):
 
-![fidelity](fidelity.png)
+![fidelity](figures/magnetic_sensor0.png)
 
-Here is the "error" (width at 99%) as a function of beta (magnetometer):
+And at finite temperature, with various detunings:
 
-![error](error.png)
+![gibbs-fidelity](figures/fidelity_vs_beta_susc.png)
+
+Here is the "error" (width at 1% fidelity) as a function of beta (magnetometer):
+
+![error](figures..png)
