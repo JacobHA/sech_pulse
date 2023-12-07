@@ -12,9 +12,9 @@ def precision_vs_delta(method):
     # ignore infinities:
     # precision_list = [precision for precision in precision_list if precision != np.inf]
     # deltas = [deltas for precision in precision_list if precision != np.inf]
-    plt.plot(deltas, precision_list)
-    plt.xlabel('delta')
-    plt.ylabel(r'Width at 99\% fidelity')
+    plt.plot(-deltas, precision_list)
+    plt.xlabel(r'Detunings, $\Delta$')
+    plt.ylabel(r'Width at 1% fidelity')
     plt.title('Error vs delta')
     plt.savefig('error.png')
     plt.savefig('figures/precision_vs_delta.png')

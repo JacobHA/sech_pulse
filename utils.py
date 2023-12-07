@@ -75,7 +75,7 @@ class TLS:
         else:
             raise ValueError('pulse_shape must be "square" or "sech"')
     
-    def evolve(self,):
+    def evolve(self,thermal_temp=0, noise_level=0):
         def term1(t, args):
             return 1/2*self.amplitude(t) * np.exp(-1j*self.detuning(t))
         
@@ -84,12 +84,13 @@ class TLS:
         gamma = 0.01
         N = 2
 
+        # prepare a thermal gibbs state:
+        rho0 = qt.thermal_dm(N, thermal_temp)
         result = qt.smesolve(H=[[raising, term1], [lowering, term2]],
                             rho0=self.psi_0,
                             times=self.t_points,
-                            # c_ops = [np.sqrt(gamma) * qt.destroy(N),  # Dissipative decay operator
-                            #          np.sqrt(gamma) * qt.destroy(N)],  # Dissipative decay operator
-                            # sc_ops=[0.01*qt.sigmaz()],
+                            # 
+                            # sc_ops=[noise_level*qt.sigmaz()],
                             ntraj=1,
                             e_ops=[qt.sigmax(), qt.sigmay(), qt.sigmaz()],
                             # method='homodyne',
@@ -106,22 +107,30 @@ class TLS:
         assert self.evolved, "System not yet evolved. Nothing to plot."
         # two subplots, one with expects, one with pulse
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
-        
-        ax1.plot(self.t_points, self.expect[0], label=r'$\langle \sigma_x \rangle$')
-        ax1.plot(self.t_points, self.expect[1], label=r'$\langle \sigma_y \rangle$')
-        ax1.plot(self.t_points, self.expect[2], label=r'$\langle \sigma_z \rangle$')
+        # increase all font size:
+        plt.rcParams["font.size"] = 22
+        ax1.plot(self.t_points, self.expect[0], 'k', label=r'$\langle \sigma_x \rangle$', lw=3)
+        ax1.plot(self.t_points, self.expect[1], 'r', label=r'$\langle \sigma_y \rangle$', lw=3)
+        ax1.plot(self.t_points, self.expect[2], 'b', label=r'$\langle \sigma_z \rangle$', lw=3)
         ax1.legend(loc=0)
-        ax1.set_xlabel('Time')
-        ax1.set_ylabel('Expectation values')
+        # ax1.set_xlabel('Time', fontsize=22)
+        # remove x ticks and place axes together:
+        ax1.set_xticks([])
+
+        ax1.set_ylabel('Expectation\nValues', fontsize=22)
         ax1.set_title('Sech Pulse Effect')
         # put some vspace between the two plots
-        plt.subplots_adjust(hspace=0.5)
 
-
-        ax2.plot(self.t_points, [self.amplitude(t_point) for t_point in self.t_points])
-        ax2.set_xlabel('Time')
-        ax2.set_ylabel('Pulse amplitude')
-        ax2.set_title('Pulse amplitude')
+        ax2.plot(self.t_points, [self.amplitude(t_point)*np.cos(self.detuning(t_point))
+                                  for t_point in self.t_points], 'g', label=r'$\Omega(t)$', lw=3)
+        # add envelope:
+        ax2.plot(self.t_points, [self.amplitude(t_point) for t_point in self.t_points], 'g--', label=r'$\Omega(t)$', lw=2, alpha=0.7)
+        ax2.set_xlabel('Time', fontsize=22)
+        ax2.set_ylabel('Pulse amplitude', fontsize=22)
+        # ax2.set_title('Pulse amplitude')
+        # remove any vertical space between the two plots
+        plt.subplots_adjust(hspace=0)
+        fig.tight_layout()
         plt.savefig(f'figures/{self.pulse_name}-{title}.png')
         return
     

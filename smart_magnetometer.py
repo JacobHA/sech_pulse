@@ -9,26 +9,37 @@ from utils import TLS
 omega_0 = 2
 omega = 2.01
 
-def parallel_simulation(beta):
+def parallel_simulation(beta, temperature):
     times = np.linspace(-10,10,60)
     system = TLS('sech', beta=beta, delta=omega_0 - omega, t_points=times)
-    system.evolve()
+    system.evolve(noise_level=temperature)
     fidelity = system.final_fidelity
     # delete system to free memory
     del system
     return fidelity
     
-# use scipy built in optimizer to find beta that maximizes fidelity:
-from scipy.optimize import minimize_scalar
 min_beta = -2
 max_beta = 2
 num_beta_steps = 200
-minimize_result = minimize_scalar(lambda beta: parallel_simulation(beta),  
+# use scipy built in optimizer to find beta that maximizes fidelity:
+from scipy.optimize import minimize_scalar
+mins = []
+temps = np.logspace(-6, -2, 10)
+for temperature in temps:
+  def experiment(beta):
+      return parallel_simulation(beta, temperature)
+  minimize_result = minimize_scalar(lambda beta: experiment(beta),  
                                   method='brent', 
                                   tol=1e-3, 
                                   bracket=(min_beta, max_beta),
-                                  options={'maxiter': 20,}
-                                    
+                                  options={'maxiter': 150,}
                                 )
+  mins.append(minimize_result.x)
 
-print(minimize_result)
+plt.figure()
+plt.title('Sensor Precision vs Temperature')
+plt.plot(temps, mins)
+plt.xlabel('Temperature')
+plt.ylabel(r'Optimal $\beta$')
+plt.xscale('log')
+plt.savefig('figures/precision_vs_temperature.png')

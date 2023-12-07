@@ -5,10 +5,10 @@ import qutip as qt
 
 # Define time points
 n_points = 500
-delta = 0.1
+delta = 0.5
 excited = qt.basis(2, 1)
 plt.figure()
-drives = np.linspace(-2, 2, 100)
+drives = np.linspace(0, 5, 100)
 max_pops = []
 for drive in drives:
     # Calculate a pi pulse, A=1
@@ -31,3 +31,4 @@ plt.plot(drives, max_pops, label=rf'$\delta={delta}$')
 
 plt.legend()
 plt.show()
+plt.savefig('figures/rabi-error.png')
