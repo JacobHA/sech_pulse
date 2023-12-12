@@ -79,7 +79,8 @@ class TLS:
     
     def evolve(self, 
                pulse_shape='sech',
-               initial_state=qt.basis(3, 0),
+               # density_matrix:
+               initial_state= qt.thermal_dm(3, 0),
                phi=None,
                alpha=None,
                delta=0,
@@ -112,7 +113,7 @@ class TLS:
         else:
             raise ValueError('pulse_shape must be "square" or "sech"')
 
-        N = 2
+        
         theta = np.pi/2
         xi = np.pi/2
         # param_0 = np.sin(theta/2) * np.exp(1j*xi)
@@ -138,10 +139,9 @@ class TLS:
         #     [unit_32, lambda t, args: -1/2 * self.amplitude(t) * np.conj(param_1) ],
         # ]
             
-        rho0 = qt.thermal_dm(N, thermal_temp)
-        result = qt.sesolve(H=H,
-                            psi0=initial_state, #rho0
-                            tlist=self.t_points,
+        result = qt.smesolve(H=H,
+                            rho0=initial_state, #rho0
+                            times=self.t_points,
                             # sc_ops=[noise_level*qt.sigmaz()],
                             # ntraj=1,
                             # e_ops=[qt.sigmax(), qt.sigmay(), qt.sigmaz()],
@@ -152,14 +152,14 @@ class TLS:
         self.total_time = np.append(self.total_time, self.t_points + self.total_time[-1] - self.t_points[0] if len(self.total_time) > 0 else self.t_points)
         self.amplitudes = np.append(self.amplitudes, np.array([self.amplitude(t) for t in self.t_points]))
         self.detunings = np.append(self.detunings, np.array([self.detuning(t) for t in self.t_points]))
-        self.states.append(result.states)
+        self.states.append(result.states[0])
         # zip together the x, y, z components of the expectation values:
         #first project onto 0,1 subspace:
-        # self.expect = np.array([qt.expect(qt.sigmax(), state[[0,1]]).unit() for state in result.states])
-        self.expect_x = np.append(self.expect_x, np.array([qt.expect(qt.sigmax(), qt.Qobj(state[0:2]).unit()) for state in result.states]))
-        self.expect_y = np.append(self.expect_y, np.array([qt.expect(qt.sigmay(), qt.Qobj(state[0:2]).unit()) for state in result.states]))
-        self.expect_z = np.append(self.expect_z, np.array([qt.expect(qt.sigmaz(), qt.Qobj(state[0:2]).unit()) for state in result.states]))
+        # get the submatrixL
 
+        self.expect_x = np.append(self.expect_x, np.array([qt.expect(qt.sigmax(), qt.Qobj(state[0:2,0:2]).unit()) for state in result.states[0]]))
+        self.expect_y = np.append(self.expect_y, np.array([qt.expect(qt.sigmay(), qt.Qobj(state[0:2,0:2]).unit()) for state in result.states[0]]))
+        self.expect_z = np.append(self.expect_z, np.array([qt.expect(qt.sigmaz(), qt.Qobj(state[0:2,0:2]).unit()) for state in result.states[0]]))
         # # 0, 1, E ---> D, B, E
         # rotate = qt.Qobj(np.array([[-param_1, param_0, 0],
         #                             [np.conj(param_0), np.conj(param_1), 0],
@@ -176,12 +176,12 @@ class TLS:
         rotate = rotate.unit()
 
         # now look in the bright excited subspace and similarly track the expectations:
-        dressed_states = [rotate * state for state in result.states]
-        self.be_expect_x = np.append(self.be_expect_x, np.array([qt.expect(qt.sigmax(), qt.Qobj(state[1:3]).unit()) for state in dressed_states]))
-        self.be_expect_y = np.append(self.be_expect_y, np.array([qt.expect(qt.sigmay(), qt.Qobj(state[1:3]).unit()) for state in dressed_states]))
-        self.be_expect_z = np.append(self.be_expect_z, np.array([qt.expect(qt.sigmaz(), qt.Qobj(state[1:3]).unit()) for state in dressed_states]))
+        dressed_states = [rotate * state for state in result.states[0]]
+        self.be_expect_x = np.append(self.be_expect_x, np.array([qt.expect(qt.sigmax(), qt.Qobj(state[1:3,1:3]).unit()) for state in dressed_states]))
+        self.be_expect_y = np.append(self.be_expect_y, np.array([qt.expect(qt.sigmay(), qt.Qobj(state[1:3,1:3]).unit()) for state in dressed_states]))
+        self.be_expect_z = np.append(self.be_expect_z, np.array([qt.expect(qt.sigmaz(), qt.Qobj(state[1:3,1:3]).unit()) for state in dressed_states]))
 
-        self.final_fidelity = qt.fidelity(result.states[-1], initial_state)
+        self.final_fidelity = qt.fidelity(result.states[0][-1], initial_state)
         self.evolved = True
     
     def plot(self,title='dynamics'):

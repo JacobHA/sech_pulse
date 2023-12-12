@@ -15,8 +15,8 @@ thetas = []
 delta_to_theta = {}
 def experiment(delta):
     sys = TLS('sech', t_points=t_points)
-    sys.evolve(delta=delta, phi=1*np.pi, initial_state=qt.basis(3,0))
-    sys.evolve(delta=delta, phi=3*np.pi, initial_state=sys.states[0][-1], global_phase=np.pi)
+    sys.evolve(delta=delta, phi=1*np.pi, initial_state=qt.basis(3,0), thermal_temp=0.01)
+    sys.evolve(delta=delta, phi=3*np.pi, initial_state=sys.states[0][-1], global_phase=np.pi, thermal_temp=0.01)
 
     # get y,z final expectation values:
     x = sys.expect_x[-1]
